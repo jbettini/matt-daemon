@@ -1,25 +1,31 @@
 
-- For your daemon’s log, you will have to create a class called Tintin_reporter (you
-will be able to re-use it in future projects)
-- Every daemon action should show in a log file matt_daemon.log with timestamp
-(in this form [ DD / MM / YYYY - HH : MM : SS]) located in the folder /var/log/-
-matt_daemon/. You can create several logs if you like.
 
 
+Serveur : 
 
 - The daemon will have to listen to the port 4242.
-- Only one daemon instance should be able to run at once. When attempting to run a second daemon whereas one instance is already running,
-an error message indicating a creation/file opening on matt_daemon.lock attempt
-must pop. A matt_daemon.lock file must be created in /var/lock/ when the daemon starts.
-When the daemon shuts down, the matt_daemon.lock file must be deleted.
+- Only one daemon instance should be able to run at once. When attempting to run a 
+    second daemon whereas one instance is already running,
+    an error message indicating a creation/file opening on matt_daemon.lock attempt
+    must pop. A matt_daemon.lock file must be created in /var/lock/ when the daemon starts.
+    When the daemon shuts down, the matt_daemon.lock file must be deleted.
+
+[17/01/2016-16:36:07] [ INFO ] - Matt_daemon: Creating server.
+[17/01/2016-16:36:07] [ INFO ] - Matt_daemon: Server created.
+[17/01/2016-16:36:07] [ INFO ] - Matt_daemon: Entering Daemon mode.
+[17/01/2016-16:36:07] [ INFO ] - Matt_daemon: started. PID: 3328.
+17/01/2016-16:36:43] [ LOG ] - Matt_daemon: User input: Salut
+[17/01/2016-16:36:44] [ LOG ] - Matt_daemon: User input: xd
+17/01/2016-16:36:47] [ INFO ] - Matt_daemon: Request quit.
+[17/01/2016-16:36:47] [ INFO ] - Matt_daemon: Quitting.
 
 
 - The program must quit with the sending of a simple "quit" character chain on the
-opened socket.
-• Any other character chain must be registered in the log file.
-• Only 3 clients can connect simultaneously to the daemon.
-• When the daemon receives a signal, it must intercept it and register it in the
-matt_daemon.log file with an explicit message and quit properly.
+    opened socket.
+    • Any other character chain must be registered in the log file.
+    • Only 3 clients can connect simultaneously to the daemon.
+    • When the daemon receives a signal, it must intercept it and register it in the
+    matt_daemon.log file with an explicit message and quit properly.
 
 
 

@@ -1,23 +1,19 @@
-CC		=	c++
-CFLAGS	=	-Wall -Wextra -Werror -g
+CXXFLAGS	=	-Wall -Wextra -Werror -g -O3 -std=c++20
 NAME	=	Matt-daemon
 SRC		=	$(wildcard srcs/*.cpp)
 
-OBJ		=	$(SRC:%.cpp=%.o)
-
-%.o : %.cpp
-	$(CC) $(CFLAGS) -o $@ -c $< 
+OBJ		=	$(SRC:.cpp=.o)
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	$(CC) $(CFLAGS) -o $(NAME) $(OBJ)
+	$(CXX) $(OBJ) -o $(NAME)
 
 clean:
-	rm -rf $(OBJ)
+	$(RM) -f $(OBJ)
 
 fclean: clean
-	rm  -rf $(NAME)
+	$(RM) -f $(NAME)
 
 re: fclean all
 
