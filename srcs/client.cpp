@@ -28,13 +28,13 @@ void    client::use_reporter(std::string msg) {
 
 void    client::increment_num_threads(void) {
     std::lock_guard<std::mutex> guard(*this->_mtx);
-    *this->_num_threads += 1;
+    (*this->_num_threads) += 1;
     if (*this->_num_threads > 3)
         throw std::runtime_error("Error: num of thread cant superior than three.");
 }
 void    client::decrement_num_threads(void) {
     std::lock_guard<std::mutex> guard(*this->_mtx);
-    *this->_num_threads -= 1;
+    (*this->_num_threads) -= 1;
     if (*this->_num_threads < 0)
         throw std::runtime_error("Error: num of thread cant be negtive.");
 }
