@@ -22,7 +22,6 @@
 # define LOGFILE	"/var/log/matt_daemon/log"
 # define LOGDIR		"/var/log/matt_daemon"
 # define LOCKFILE	"/var/matt_daemon.lock"
-# define SOCKFILE	"/var/matt_daemon.sock"
 # define LOG		"LOG"
 # define INFO		"INFO"
 # define ERROR		"ERROR"
@@ -32,46 +31,51 @@ bool	check_rights(void);
 void	redir_to_devnull(void);
 void	daemonize(bool nochdir, bool noclose);
 
-class   customError : public std::exception {
+class   CustomError : public std::exception {
+
 	public:
-		customError(const char* msg) : _msg(msg) {};
+		CustomError(const char* msg) : _msg(msg) {};
 		virtual const char* what() const throw() {
 			return this->_msg;
 		}
+	
 	private:
 		const char*	_msg;
+	
 };
 
-class	lockfile {
+class	LockFile {
+
 	public:
-		lockfile();
-		~lockfile(void);
-		lockfile(lockfile const & other) = default;
-		lockfile	&operator=(lockfile const & rhs) = default;
+		LockFile();
+		~LockFile(void);
+		LockFile(LockFile const & other) = default;
+		LockFile& operator=(LockFile const & rhs) = default;
 
 	private:
 			int	_fd;
+
 };
 
-class	Tintin_reporter {
+class	TintinReporter {
+
 	public:
-		Tintin_reporter(void);
-		~Tintin_reporter(void);
-		Tintin_reporter(Tintin_reporter const & other) = default;
-		Tintin_reporter &operator=(Tintin_reporter const & rhs) = default;
+		TintinReporter(void);
+		~TintinReporter(void) = default;
+		TintinReporter(TintinReporter const & other) = default;
+		TintinReporter &operator=(TintinReporter const & rhs) = default;
 
 		void	save_logs(std::string logtype, std::string msg);
 
-	private:
 };
 
-class	client {
+class	Client {
 	public:
-		client(void);
-		~client(void);
-		client(int fd, int *num_threads);
-		client(client const & other);
-		client &operator=(client const & rhs);
+		Client(void);
+		~Client(void) = default;
+		Client(int fd, int *num_threads);
+		Client(Client const & other) = default;
+		Client &operator=(Client const & rhs) = default;
 
 		int		get_client_fd(void) const;
 
@@ -82,23 +86,21 @@ class	client {
 	private:
 		int					*_num_threads;
 		int					_client_fd;
-		Tintin_reporter		_reporter;
+		TintinReporter		_reporter;
 };
 
-class	unix_socket	{
+class	UnixSocket	{
 	public:
-		unix_socket(void);
-		~unix_socket(void);
-		unix_socket(unix_socket const & other);
-		unix_socket	&operator=(unix_socket const & rhs);
+		UnixSocket(void);
+		~UnixSocket(void);
+		UnixSocket(UnixSocket const & other) = default;
+		UnixSocket	&operator=(UnixSocket const & rhs) = default;
 		
 		void	run(void);
 
 	private:
 		int					_sockfd;
 		int					_num_threads;
-		pid_t				_pid;
-		std::mutex			_mtx;
-		Tintin_reporter		_reporter;
+		TintinReporter		_reporter;
 		struct sockaddr_in	_addr;
 };

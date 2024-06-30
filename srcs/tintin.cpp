@@ -2,22 +2,20 @@
 
 namespace fs = std::filesystem;
 
-Tintin_reporter::Tintin_reporter(void) {
+TintinReporter::TintinReporter(void) {
     if (!fs::exists(LOGDIR))
         if (!fs::create_directories(LOGDIR))
-            throw customError("Error: create_directory failed");
+            throw CustomError("Error: create_directory failed");
+
     if (!fs::exists(LOGFILE)) {
         std::ofstream ofs(LOGFILE);
         if (!ofs)
-            throw customError("Error: init ofstream failed");
+            throw CustomError("Error: init ofstream failed");
         ofs.close();
     }
 }
 
-Tintin_reporter::~Tintin_reporter(void) {
-}
-
-void    Tintin_reporter::save_logs(std::string logtype, std::string msg) {
+void    TintinReporter::save_logs(std::string logtype, std::string msg) {
     time_t          rawtime;
     struct tm       *timeinfo;
     char            buffer[80];
@@ -25,10 +23,12 @@ void    Tintin_reporter::save_logs(std::string logtype, std::string msg) {
 
     logstream.open(LOGFILE, std::fstream::out | std::fstream::app);
     if (!logstream.is_open())
-        throw customError("Error: open fstream failed");
+        throw CustomError("Error: open fstream failed");
+
     time(&rawtime);
     timeinfo = localtime(&rawtime);
     strftime(buffer, 80, "%d/%m/%Y - %H:%M:%S",timeinfo);
+
     logstream << "["<< buffer << "] [ " << logtype << " ] - Matt_daemon: " << msg << std::endl;
     if (logstream.is_open())
         logstream.close();

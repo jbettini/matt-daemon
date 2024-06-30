@@ -17,37 +17,35 @@ bool is_fd_open(int fd) {
 
 void handle_signals(int signal) {
     (void)signal;
-    Tintin_reporter reporter;
+    TintinReporter reporter;
     reporter.save_logs(INFO, "Signal handler.");
     intentional_close = true;
     for (const auto & c : fds["Client"]) {
         write_to_client(c, "quit\n");
         if (shutdown(c, SHUT_RDWR) == -1)
-            throw customError("Error: Shutdown failed.");
+            throw CustomError("Error: Shutdown failed.");
         close(c);
     }
     auto sockfd = fds["Server"].begin();
     close(*sockfd);
 }
 
-unix_socket::unix_socket(void) : _num_threads(0) {
+UnixSocket::UnixSocket(void) : _num_threads(0) {
     this->_reporter.save_logs(INFO, "Started.");
-    if (fs::exists(SOCKFILE))
-        unlink(SOCKFILE);
     this->_sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (this->_sockfd == -1)
-        throw customError("Error: socket failed");
+        throw CustomError("Error: socket failed");
     this->_reporter.save_logs(INFO, "Creating server.");
     int reuse = 1;
     if (setsockopt(this->_sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
-        throw customError("Error: setsockopt failed");
+        throw CustomError("Error: setsockopt failed");
     this->_addr.sin_family = AF_INET;
     this->_addr.sin_addr.s_addr = INADDR_ANY;
     this->_addr.sin_port = htons(4242);
     if (bind(this->_sockfd, reinterpret_cast<struct sockaddr*>(&(this->_addr)), sizeof(this->_addr)) == -1)
-        throw customError("Error: bind failed");
+        throw CustomError("Error: bind failed");
     if (listen(this->_sockfd, 3) == -1)
-        throw customError("Error: listen failed");
+        throw CustomError("Error: listen failed");
     int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGUSR1, SIGUSR2, SIGALRM, SIGPIPE, SIGCHLD, SIGCONT};
     for (int sig : signals) {
         signal(sig, handle_signals);
@@ -55,31 +53,20 @@ unix_socket::unix_socket(void) : _num_threads(0) {
     this->_reporter.save_logs(INFO, "Server created.");
 }
 
-unix_socket::~unix_socket(void) {
+UnixSocket::~UnixSocket(void) {
     close (this->_sockfd);
     this->_reporter.save_logs(INFO, "Quitting.");
-}
-
-unix_socket::unix_socket(unix_socket const & other) {
-    *this = other;
-}
-
-unix_socket	&unix_socket::operator=(unix_socket const & rhs) {
-    this->_addr = rhs._addr;
-    this->_sockfd = rhs._sockfd;
-    this->_num_threads = rhs._num_threads;
-    return *this;
 }
 
 // while (true) {
 //     n = read(fd, buf, sizeof(buf));
 //     if (n == -1)
-//         throw customError("Error: read failed"); 
+//         throw CustomError("Error: read failed"); 
 //     buf[n] = 0;
 //     memset(buf, 0, 4096);
 // }
 // TODO: maybe implement a dynamic method to read
-void handle_client(client c, std::mutex &mtx, pid_t p) {
+void handle_client(Client c, std::mutex &mtx) {
     std::cout << "handle_client " << c.get_client_fd() << std::endl;
     int         n;
     int         fd;
@@ -96,13 +83,13 @@ void handle_client(client c, std::mutex &mtx, pid_t p) {
         if (n == -1) {
             std::cerr << "recv failed with error: " << strerror(errno) << std::endl;
             std::string err = "Error: recv failed with error: " + std::string(strerror(errno));
-            throw customError(msg.c_str());
+            throw CustomError(msg.c_str());
         } else if (n == 0)
             break ;
         buf[n] = '\0';
         msg += std::string_view(buf, n);
         if (msg == "Quit\n") {
-            kill(p, SIGINT);
+            kill(getpid(), SIGINT);
             break ;
         }
         std::cout << msg << std::endl;
@@ -112,14 +99,15 @@ void handle_client(client c, std::mutex &mtx, pid_t p) {
     c.decrement_num_threads(mtx);
     c.use_reporter("Client Disconnected", INFO, mtx);
     if (fds["Client"].erase(c.get_client_fd()) != 1)
-        throw customError("Error: set erase incorrect number of elements");
+        throw CustomError("Error: set erase incorrect number of elements");
 }
 
-void unix_socket::run(void) {
+void UnixSocket::run(void) {
+    std::mutex			mtx;
     if ((fds["Server"].insert(this->_sockfd)).second == false)
-        throw customError("Error: failed to insert sockfd in set");
-    std::cout << "Welcome to Matt-Daemon : PID " << getpid() << "!" << std::endl;
+        throw CustomError("Error: failed to insert sockfd in set");
     intentional_close = false;
+    std::cout << "Welcome to Matt-Daemon : PID " << getpid() << "!" << std::endl;
     this->_reporter.save_logs(INFO, "Entering Daemon mode.");
     this->_reporter.save_logs(INFO, "started. PID: " + std::to_string(static_cast<int>(getpid())) + ".");
     while (true) {
@@ -128,23 +116,19 @@ void unix_socket::run(void) {
             if (errno == EBADF && intentional_close == true)
                 break ;
             else 
-                throw customError("Error: accept failed");
+                throw CustomError("Error: accept failed");
         }
         else if (this->_num_threads >= 3) {
             write_to_client(client_fd, "Already 3 clients connected, please try later.");
             this->_reporter.save_logs(ERROR, "Error: Already 3 clients.");
             close(client_fd);
         } else {
-            // std::unique_ptr<client> new_client(new client(client_fd, &this->_num_threads));
-            // std::thread new_one(handle_client, std::move(new_client), std::ref(this->_mtx), std::ref(this->_pid));
-            
-            client new_client(client_fd, &this->_num_threads);
-            std::thread new_one(handle_client, new_client, std::ref(this->_mtx), std::ref(this->_pid));
-            
+            Client new_client(client_fd, &this->_num_threads);
+            std::thread new_one(handle_client, new_client, std::ref(mtx));
             new_one.detach();
             std::cout << "New Client id : " << client_fd << std::endl;
             if ((fds["Client"].insert(client_fd).second) == false)
-                throw customError("Error: failed to insert client in set: client already connected");
+                throw CustomError("Error: failed to insert Client in set: Client already connected");
             client_fd = 0;
         }
     }

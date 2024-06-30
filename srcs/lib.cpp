@@ -12,15 +12,13 @@ bool    check_rights(void) {
 void    redir_to_devnull(void) {
     int devnull;
     if ((devnull = open("/dev/null", O_WRONLY)) == -1)
-        throw customError("Error: open failed");
+        throw CustomError("Error: open failed");
 
-    if (dup2(devnull, STDIN_FILENO) == -1 || \
-            dup2(devnull, STDOUT_FILENO) == -1 || \
-                dup2(devnull, STDERR_FILENO) == -1) {
-        close(devnull);
-        throw customError("Error: dup2 failed");
-    }
-    close(devnull);
+    (void)dup2(devnull, STDIN_FILENO);
+    (void)dup2(devnull, STDOUT_FILENO);
+    (void)dup2(devnull, STDERR_FILENO);
+    if (devnull > 2)
+        (void)close (devnull);
 }
 
 // TODO: return PID
@@ -28,21 +26,24 @@ void   daemonize(bool nochdir, bool noclose) {
     pid_t   pid;
     pid = fork();
     if (pid < 0)
-        throw customError("Error: fork failed");
+        throw CustomError("Error: fork failed");
     else if (pid > 0)
         exit(EXIT_SUCCESS);
+
     if (setsid() < 0)
-        throw customError("Error: setsid failed");
+        throw CustomError("Error: setsid failed");
+
     pid = fork();
     if (pid < 0)
-        throw customError("Error: fork failed");
+        throw CustomError("Error: fork failed");
     if (pid > 0)
         exit(EXIT_SUCCESS);
+
     if (!nochdir)
         chdir("/");
-    for (int x = sysconf(_SC_OPEN_MAX); x >= 3; x--) {
-        close(x);
-    }
+    // for (int x = sysconf(_SC_OPEN_MAX); x >= 3; x--) {
+    //     close(x);
+    // }
     if (!noclose)
         redir_to_devnull();
         std::cout << "Successfully Daemonize with " << getpid() << std::endl;
