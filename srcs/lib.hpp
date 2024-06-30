@@ -15,6 +15,18 @@
 # include <chrono>
 # include <ctime>
 # include <thread>
+# include <netinet/in.h>
+# include <arpa/inet.h>
+# include <string_view>
+
+// struct sockaddr_in {
+//     short            sin_family;   // e.g. AF_INET
+//     unsigned short   sin_port;     // e.g. htons(3490)
+//     struct in_addr   sin_addr;     // see struct in_addr, below
+//     char             sin_zero[8];  // zero this if you want to
+// };
+
+
 
 # define LOGFILE	"/var/log/matt_daemon/log"
 # define LOGDIR		"/var/log/matt_daemon"
@@ -24,16 +36,20 @@
 # define INFO		"INFO"
 # define ERROR		"ERROR"
 
-
-struct	sockaddr_un	{
-	sa_family_t	sun_family;					/* AF_UNIX */
-	char		sun_path[108];				/* Pathname */
-};
-
 void	exit_on_error(const std::string err);
 bool	check_rights(void);
 void	redir_to_devnull(void);
-void	daemonize(bool nochdir, bool noclose);
+pid_t	daemonize(bool nochdir, bool noclose);
+
+class   customError : public std::exception {
+	public:
+		customError(const char* msg) : _msg(msg) {};
+		virtual const char* what() const throw() {
+			return this->_msg;
+		}
+	private:
+		const char*	_msg;
+};
 
 class	lockfile {
 	public:
@@ -62,18 +78,19 @@ class	client {
 	public:
 		client(void);
 		~client(void);
-		client(int fd, int *num_threads, std::mutex *mtx);
+		client(int fd, int *num_threads);
 		client(client const & other);
 		client &operator=(client const & rhs);
 
-		void	use_reporter(std::string msg);
-		void	increment_num_threads(void);
-		void	decrement_num_threads(void);
+		int		get_client_fd(void) const;
+
+		void	use_reporter(std::string msg, std::string logtype, std::mutex &mtx);
+		void	increment_num_threads(std::mutex &mtx);
+		void	decrement_num_threads(std::mutex &mtx);
 
 	private:
 		int					*_num_threads;
 		int					_client_fd;
-		std::mutex			*_mtx;
 		Tintin_reporter		_reporter;
 };
 
@@ -81,16 +98,17 @@ class	unix_socket	{
 	public:
 		unix_socket(void);
 		~unix_socket(void);
-		unix_socket(unix_socket const & other) = default;
-		unix_socket	&operator=(unix_socket const & rhs) = default;
+		unix_socket(unix_socket const & other);
+		unix_socket	&operator=(unix_socket const & rhs);
 		
+		void	set_pid(void);
 		void	run(void);
 
 	private:
 		int					_sockfd;
 		int					_num_threads;
+		pid_t				_pid;
 		std::mutex			_mtx;
-		lockfile			_lock;
 		Tintin_reporter		_reporter;
-		struct sockaddr_un	_addr;
+		struct sockaddr_in	_addr;
 };

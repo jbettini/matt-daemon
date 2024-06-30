@@ -5,11 +5,11 @@ namespace fs = std::filesystem;
 Tintin_reporter::Tintin_reporter(void) {
     if (!fs::exists(LOGDIR))
         if (!fs::create_directories(LOGDIR))
-            throw std::runtime_error("Error: create_directory failed");
+            throw customError("Error: create_directory failed");
     if (!fs::exists(LOGFILE)) {
         std::ofstream ofs(LOGFILE);
         if (!ofs)
-            throw std::runtime_error("Error: init ofstream failed");
+            throw customError("Error: init ofstream failed");
         ofs.close();
     }
 }
@@ -25,7 +25,7 @@ void    Tintin_reporter::save_logs(std::string logtype, std::string msg) {
 
     logstream.open(LOGFILE, std::fstream::out | std::fstream::app);
     if (!logstream.is_open())
-        throw std::runtime_error("Error: open fstream failed");
+        throw customError("Error: open fstream failed");
     time(&rawtime);
     timeinfo = localtime(&rawtime);
     strftime(buffer, 80, "%d/%m/%Y - %H:%M:%S",timeinfo);
