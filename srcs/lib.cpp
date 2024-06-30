@@ -24,7 +24,7 @@ void    redir_to_devnull(void) {
 }
 
 // TODO: return PID
-pid_t    daemonize(bool nochdir, bool noclose) {
+void   daemonize(bool nochdir, bool noclose) {
     pid_t   pid;
     pid = fork();
     if (pid < 0)
@@ -45,5 +45,5 @@ pid_t    daemonize(bool nochdir, bool noclose) {
     }
     if (!noclose)
         redir_to_devnull();
-    return pid;
+        std::cout << "Successfully Daemonize with " << getpid() << std::endl;
 }

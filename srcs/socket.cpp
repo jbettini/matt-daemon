@@ -24,13 +24,10 @@ void handle_signals(int signal) {
         write_to_client(c, "quit\n");
         if (shutdown(c, SHUT_RDWR) == -1)
             throw customError("Error: Shutdown failed.");
+        close(c);
     }
     auto sockfd = fds["Server"].begin();
     close(*sockfd);
-}
-
-void	unix_socket::set_pid(void) {
-    this->_pid = getpid();
 }
 
 unix_socket::unix_socket(void) : _num_threads(0) {
@@ -82,16 +79,16 @@ unix_socket	&unix_socket::operator=(unix_socket const & rhs) {
 //     memset(buf, 0, 4096);
 // }
 // TODO: maybe implement a dynamic method to read
-void handle_client(std::unique_ptr<client> c, std::mutex &mtx, pid_t p) {
-    std::cout << "handle_client " << c->get_client_fd() << std::endl;
+void handle_client(client c, std::mutex &mtx, pid_t p) {
+    std::cout << "handle_client " << c.get_client_fd() << std::endl;
     int         n;
     int         fd;
     char        buf[4096];
     std::string msg;
 
-    fd = c->get_client_fd();
-    c->use_reporter("New Client", INFO, mtx);
-    c->increment_num_threads(mtx);
+    fd = c.get_client_fd();
+    c.use_reporter("New Client", INFO, mtx);
+    c.increment_num_threads(mtx);
     while (true) {
         memset(buf, 0, 4096);
     std::cout << "recv " << fd << std::endl;
@@ -109,21 +106,22 @@ void handle_client(std::unique_ptr<client> c, std::mutex &mtx, pid_t p) {
             break ;
         }
         std::cout << msg << std::endl;
-        c->use_reporter(msg, LOG, mtx);
+        c.use_reporter(msg, LOG, mtx);
         msg.clear();
     }
-    c->decrement_num_threads(mtx);
-    c->use_reporter("Client Disconnected", INFO, mtx);
-    if (fds["Client"].erase(c->get_client_fd()) != 1)
+    c.decrement_num_threads(mtx);
+    c.use_reporter("Client Disconnected", INFO, mtx);
+    if (fds["Client"].erase(c.get_client_fd()) != 1)
         throw customError("Error: set erase incorrect number of elements");
 }
 
 void unix_socket::run(void) {
-    this->set_pid();
     if ((fds["Server"].insert(this->_sockfd)).second == false)
         throw customError("Error: failed to insert sockfd in set");
-    std::cout << "Welcome to Matt-Daemon : PID " << this->_pid << "!" << std::endl;
+    std::cout << "Welcome to Matt-Daemon : PID " << getpid() << "!" << std::endl;
     intentional_close = false;
+    this->_reporter.save_logs(INFO, "Entering Daemon mode.");
+    this->_reporter.save_logs(INFO, "started. PID: " + std::to_string(static_cast<int>(getpid())) + ".");
     while (true) {
         int client_fd = accept(this->_sockfd, NULL, NULL);
         if (client_fd == -1) {
@@ -137,11 +135,11 @@ void unix_socket::run(void) {
             this->_reporter.save_logs(ERROR, "Error: Already 3 clients.");
             close(client_fd);
         } else {
-            std::unique_ptr<client> new_client(new client(client_fd, &this->_num_threads));
-            std::thread new_one(handle_client, std::move(new_client), std::ref(this->_mtx), std::ref(this->_pid));
+            // std::unique_ptr<client> new_client(new client(client_fd, &this->_num_threads));
+            // std::thread new_one(handle_client, std::move(new_client), std::ref(this->_mtx), std::ref(this->_pid));
             
-            // client new_client(client_fd, &this->_num_threads);
-            // std::thread new_one(handle_client, new_client, std::ref(this->_mtx), std::ref(this->_pid));
+            client new_client(client_fd, &this->_num_threads);
+            std::thread new_one(handle_client, new_client, std::ref(this->_mtx), std::ref(this->_pid));
             
             new_one.detach();
             std::cout << "New Client id : " << client_fd << std::endl;

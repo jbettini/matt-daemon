@@ -19,15 +19,6 @@
 # include <arpa/inet.h>
 # include <string_view>
 
-// struct sockaddr_in {
-//     short            sin_family;   // e.g. AF_INET
-//     unsigned short   sin_port;     // e.g. htons(3490)
-//     struct in_addr   sin_addr;     // see struct in_addr, below
-//     char             sin_zero[8];  // zero this if you want to
-// };
-
-
-
 # define LOGFILE	"/var/log/matt_daemon/log"
 # define LOGDIR		"/var/log/matt_daemon"
 # define LOCKFILE	"/var/matt_daemon.lock"
@@ -39,7 +30,7 @@
 void	exit_on_error(const std::string err);
 bool	check_rights(void);
 void	redir_to_devnull(void);
-pid_t	daemonize(bool nochdir, bool noclose);
+void	daemonize(bool nochdir, bool noclose);
 
 class   customError : public std::exception {
 	public:
@@ -101,7 +92,6 @@ class	unix_socket	{
 		unix_socket(unix_socket const & other);
 		unix_socket	&operator=(unix_socket const & rhs);
 		
-		void	set_pid(void);
 		void	run(void);
 
 	private:

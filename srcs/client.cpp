@@ -8,7 +8,7 @@ client::client(int fd, int *num_threads) {
 }
 
 client::~client(void) {
-    close(this->_client_fd);
+    // close(this->_client_fd);
 }
 
 client::client(client const & other) {
@@ -21,7 +21,6 @@ client &client::operator=(client const & rhs) {
 	this->_reporter = rhs._reporter;
 	return *this;
 }
-    
 
 void    client::use_reporter(std::string msg, std::string logtype, std::mutex &mtx) {
 	std::lock_guard<std::mutex> guard(mtx);
