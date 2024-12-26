@@ -46,5 +46,5 @@ void   daemonize(bool nochdir, bool noclose) {
     // }
     if (!noclose)
         redir_to_devnull();
-        std::cout << "Successfully Daemonize with " << getpid() << std::endl;
+    std::cout << "Successfully Daemonize with " << getpid() << std::endl;
 }

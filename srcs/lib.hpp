@@ -17,11 +17,13 @@
 # include <thread>
 # include <netinet/in.h>
 # include <arpa/inet.h>
-# include <string_view>
+#include <sys/file.h>
+#include <string_view>
+#include <cstring>
 
-# define LOGFILE	"/var/log/matt_daemon/log"
+# define LOGFILE	"/var/log/matt_daemon/matt_daemon.log"
 # define LOGDIR		"/var/log/matt_daemon"
-# define LOCKFILE	"/var/matt_daemon.lock"
+# define LOCKFILE	"/var/lock/matt_daemon.lock"
 # define LOG		"LOG"
 # define INFO		"INFO"
 # define ERROR		"ERROR"

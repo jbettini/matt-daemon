@@ -16,9 +16,44 @@ bool is_fd_open(int fd) {
 }
 
 void handle_signals(int signal) {
-    (void)signal;
+std::string type;
+    switch (signal) {
+        case SIGINT:
+            type = "SIGINT";
+            break;
+        case SIGTERM:
+            type = "SIGTERM";
+            break;
+        case SIGHUP:
+            type = "SIGHUP";
+            break;
+        case SIGUSR1:
+            type = "SIGUSR1";
+            break;
+        case SIGUSR2:
+            type = "SIGUSR2";
+            break;
+        case SIGALRM:
+            type = "SIGALRM";
+            break;
+        case SIGPIPE:
+            type = "SIGPIPE";
+            break;
+        case SIGCHLD:
+            type = "SIGCHLD";
+            break;
+        case SIGCONT:
+            type = "SIGCONT";
+            break;
+        case SIGQUIT:
+            type = "SIGQUIT";
+            break;
+        default:
+            type = "Unknown signal";
+            break;
+    }
     TintinReporter reporter;
-    reporter.save_logs(INFO, "Signal handler.");
+    reporter.save_logs(INFO, "Signal handler called with " + type + ".");
     intentional_close = true;
     for (const auto & c : fds["Client"]) {
         write_to_client(c, "quit\n");
@@ -31,7 +66,6 @@ void handle_signals(int signal) {
 }
 
 UnixSocket::UnixSocket(void) : _num_threads(0) {
-    this->_reporter.save_logs(INFO, "Started.");
     this->_sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (this->_sockfd == -1)
         throw CustomError("Error: socket failed");
@@ -43,10 +77,11 @@ UnixSocket::UnixSocket(void) : _num_threads(0) {
     this->_addr.sin_addr.s_addr = INADDR_ANY;
     this->_addr.sin_port = htons(4242);
     if (bind(this->_sockfd, reinterpret_cast<struct sockaddr*>(&(this->_addr)), sizeof(this->_addr)) == -1)
-        throw CustomError("Error: bind failed");
+        throw CustomError("Error: bind failed: Cannot create 2 socket.");
     if (listen(this->_sockfd, 3) == -1)
         throw CustomError("Error: listen failed");
-    int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGUSR1, SIGUSR2, SIGALRM, SIGPIPE, SIGCHLD, SIGCONT};
+    this->_reporter.save_logs(INFO, "Started.");
+    int signals[] = {SIGINT, SIGTERM, SIGHUP, SIGUSR1, SIGUSR2, SIGALRM, SIGPIPE, SIGCHLD, SIGCONT, SIGQUIT};
     for (int sig : signals) {
         signal(sig, handle_signals);
     }
@@ -58,16 +93,7 @@ UnixSocket::~UnixSocket(void) {
     this->_reporter.save_logs(INFO, "Quitting.");
 }
 
-// while (true) {
-//     n = read(fd, buf, sizeof(buf));
-//     if (n == -1)
-//         throw CustomError("Error: read failed"); 
-//     buf[n] = 0;
-//     memset(buf, 0, 4096);
-// }
-// TODO: maybe implement a dynamic method to read
 void handle_client(Client c, std::mutex &mtx) {
-    std::cout << "handle_client " << c.get_client_fd() << std::endl;
     int         n;
     int         fd;
     char        buf[4096];
@@ -78,7 +104,8 @@ void handle_client(Client c, std::mutex &mtx) {
     c.increment_num_threads(mtx);
     while (true) {
         memset(buf, 0, 4096);
-    std::cout << "recv " << fd << std::endl;
+        // std::cout << "> " << std::flush;
+        write_to_client(fd, "> ");
         n = recv(fd, buf, sizeof(buf), 0);
         if (n == -1) {
             std::cerr << "recv failed with error: " << strerror(errno) << std::endl;
@@ -87,12 +114,12 @@ void handle_client(Client c, std::mutex &mtx) {
         } else if (n == 0)
             break ;
         buf[n] = '\0';
-        msg += std::string_view(buf, n);
-        if (msg == "Quit\n") {
+        msg += std::string_view(buf, n - 1);
+        if (msg == "Quit") {
+            c.use_reporter("Quit", LOG, mtx);
             kill(getpid(), SIGINT);
             break ;
         }
-        std::cout << msg << std::endl;
         c.use_reporter(msg, LOG, mtx);
         msg.clear();
     }
@@ -126,7 +153,6 @@ void UnixSocket::run(void) {
             Client new_client(client_fd, &this->_num_threads);
             std::thread new_one(handle_client, new_client, std::ref(mtx));
             new_one.detach();
-            std::cout << "New Client id : " << client_fd << std::endl;
             if ((fds["Client"].insert(client_fd).second) == false)
                 throw CustomError("Error: failed to insert Client in set: Client already connected");
             client_fd = 0;

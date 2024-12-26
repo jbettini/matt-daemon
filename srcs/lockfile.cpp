@@ -6,10 +6,14 @@ LockFile::LockFile(void) {
     this->_fd = open(LOCKFILE, O_RDWR | O_CREAT);
     if (this->_fd == -1)
         throw CustomError("Error: open failed");
-    if (flock(this->_fd, LOCK_EX | LOCK_NB) == -1) {
+    int ret = flock(this->_fd, LOCK_EX | LOCK_NB);
+    if (ret == -1) {
         close(this->_fd);
-        if (errno == EWOULDBLOCK)
+        if (errno == EWOULDBLOCK) {
+            TintinReporter reporter;
+            reporter.save_logs(ERROR, "Error: Another instance is already running.");
             throw CustomError("Error file locked.");
+        }
         throw CustomError("Error: flock failed");
     }    
 }

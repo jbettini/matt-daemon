@@ -1,4 +1,4 @@
-CXXFLAGS	=	-Wall -Wextra -Werror -g -O3 -std=c++20
+CXXFLAGS	=	-Wall -Wextra -Werror -g -O3 -std=c++20 -fPIE
 NAME		=	Matt-daemon
 SRC		=	$(wildcard srcs/*.cpp)
 
